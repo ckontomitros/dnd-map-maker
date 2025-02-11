@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Eraser, Move, Pencil, Square, ZoomIn, ZoomOut } from 'lucide-react';
 import ZoomControls from './ZoomControls'
 import roadImage from './assets/road.webp';
+import fountain from './assets/fountain.png'
 const MapEditor = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const canvasRef = useRef(null);
@@ -13,20 +14,9 @@ const MapEditor = () => {
   const [placedTiles, setPlacedTiles] = useState([]);
   const [dropPreview, setDropPreview] = useState(null);
   const gridSize = 8;
-
-  const multiSquareObject = {
-    id: 'large-image-1',
-    width: 2, // Number of grid squares wide
-    height: 2, // Number of grid squares tall
-    x: 0, // Top-left grid position (will be updated during drag)
-    y: 0, // Top-left grid position (will be updated during drag)
-    type: 'large-image',
-    isDragging: false,
-    preview: false,
-  };
   
   const tileCategories = [
-    { id: 'terrain', name: 'Terrain', tiles: ['Grass', 'Water', 'Mountain', 'Road'] },
+    { id: 'terrain', name: 'Terrain', tiles: ['Grass', 'Water', 'Mountain', 'Road', 'Fountain'] },
     { id: 'buildings', name: 'Buildings', tiles: ['House', 'Tower', 'Wall'] },
     { id: 'furniture', name: 'Furniture', tiles: ['Table', 'Chair', 'Bed'] },
   ];
@@ -36,6 +26,7 @@ const MapEditor = () => {
     Water: { color: '#87CEEB', symbol: '💧',width: 5, height: 5 },
     Mountain: { color: '#8B4513', symbol: '⛰️',width: 3, height: 10 },
     Road: { color: '#8B4543', symbol: '⛰️',width: 3, height: 10, image:roadImage },
+    Fountain: { color: '#8B4543', symbol: '⛰️',width: 10, height: 10, image:fountain }
   };
 
   const tools = [
