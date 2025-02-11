@@ -2,27 +2,40 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Eraser, Move, Pencil, Square, ZoomIn, ZoomOut } from 'lucide-react';
 import ZoomControls from './ZoomControls'
+import roadImage from './assets/road.webp';
 const MapEditor = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const canvasRef = useRef();
+  const canvasRef = useRef(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [placedTiles, setPlacedTiles] = useState([]);
   const [dropPreview, setDropPreview] = useState(null);
-  const gridSize = 32;
+  const gridSize = 8;
+
+  const multiSquareObject = {
+    id: 'large-image-1',
+    width: 2, // Number of grid squares wide
+    height: 2, // Number of grid squares tall
+    x: 0, // Top-left grid position (will be updated during drag)
+    y: 0, // Top-left grid position (will be updated during drag)
+    type: 'large-image',
+    isDragging: false,
+    preview: false,
+  };
   
   const tileCategories = [
-    { id: 'terrain', name: 'Terrain', tiles: ['Grass', 'Water', 'Mountain'] },
+    { id: 'terrain', name: 'Terrain', tiles: ['Grass', 'Water', 'Mountain', 'Road'] },
     { id: 'buildings', name: 'Buildings', tiles: ['House', 'Tower', 'Wall'] },
     { id: 'furniture', name: 'Furniture', tiles: ['Table', 'Chair', 'Bed'] },
   ];
 
   const terrainTiles = {
-    Grass: { color: '#90EE90', symbol: '🌱' },
-    Water: { color: '#87CEEB', symbol: '💧' },
-    Mountain: { color: '#8B4513', symbol: '⛰️' },
+    Grass: { color: '#90EE90', symbol: '🌱' , width: 10, height: 2},
+    Water: { color: '#87CEEB', symbol: '💧',width: 5, height: 5 },
+    Mountain: { color: '#8B4513', symbol: '⛰️',width: 3, height: 10 },
+    Road: { color: '#8B4543', symbol: '⛰️',width: 3, height: 10, image:roadImage },
   };
 
   const tools = [
@@ -99,35 +112,6 @@ const MapEditor = () => {
     
     setDropPreview(null);
   };
-  const renderMultiSquareObject = (object) => {
-    const width = object.width * gridSize;
-    const height = object.height * gridSize;
-  
-    return (
-      <div
-        key={object.id}
-        className={`absolute flex items-center justify-center ${
-          object.preview ? 'opacity-50' : ''
-        }`}
-        style={{
-          left: `${object.x * gridSize}px`,
-          top: `${object.y * gridSize}px`,
-          width: `${width}px`,
-          height: `${height}px`,
-          backgroundColor: object.preview ? 'rgba(0, 255, 0, 0.3)' : 'transparent',
-          border: object.preview ? '2px dashed green' : 'none',
-          pointerEvents: object.isDragging ? 'none' : 'auto',
-        }}
-      >
-        {/* Use an SVG or image here */}
-        <img
-          src="/path/to/image.png"
-          alt="Large Object"
-          className="w-full h-full"
-        />
-      </div>
-    );
-  };
 
   // Render tiles and preview
   const renderTiles = () => {
@@ -144,8 +128,8 @@ const MapEditor = () => {
           style={{
             left: `${tile.x}px`,
             top: `${tile.y}px`,
-            width: `${gridSize}px`,
-            height: `${gridSize}px`,
+            width: `${gridSize*terrainTiles[tile.type]?.width}px`,
+            height: `${gridSize*terrainTiles[tile.type]?.height}px`,
             backgroundColor: terrainTiles[tile.type]?.color || 'gray',
             fontSize: `${24 / zoom}px`, // Adjust font size based on zoom
             border: tile.isPreview ? '2px dashed #666' : '1px solid rgba(0,0,0,0.1)',
@@ -153,7 +137,22 @@ const MapEditor = () => {
             zIndex: tile.isPreview ? 1000 : 1
           }}
         >
+            {terrainTiles[tile.type]?.image.src ? (
+          <img
+            src={terrainTiles[tile.type]?.image.src}
+            alt={tile.type}
+            className="w-full h-full object-cover"
+
+          />
+        ) : (
+          <div
+          >
           {terrainTiles[tile.type]?.symbol}
+          {terrainTiles[tile.type]?.symbol}
+            {terrainTiles[tile.type]?.symbol}
+          </div>
+        )}
+        
         </div>
       ));
   };
@@ -161,7 +160,7 @@ const MapEditor = () => {
   // Handle zoom with mouse wheel
   const handleWheel = (e:any) => {
     e.preventDefault();
-    const zoomFactor = 0.1;
+    const zoomFactor = 0.1; 
     const delta = e.deltaY > 0 ? -zoomFactor : zoomFactor;
     const newZoom = Math.max(0.5, Math.min(3, zoom + delta));
     
@@ -294,7 +293,7 @@ const MapEditor = () => {
          <div className="flex-1 relative overflow-hidden">
           <div
             ref={canvasRef}
-            className="absolute inset-0 w-full h-full"
+            className="absolute inset-0 w-7xl h-7xl"
             onWheel={handleWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
