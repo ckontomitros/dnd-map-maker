@@ -15,6 +15,7 @@ const MapEditor = () => {
   const [placedTiles, setPlacedTiles] = useState<Tile[]>([]);
   const [dropPreview, setDropPreview] = useState<DropPreview | null>(null);
   const [isMoveActive, setIsMoveActive] = useState(false);
+  const [draggedTile, setDraggedTile] = useState<{type: string, id: number|null}|null>(null);
   const gridSize = 8;
   
   const tileCategories = [
@@ -45,6 +46,11 @@ const MapEditor = () => {
     x: number;
     y: number;
   };
+
+  type TileStr = {
+    type: string;
+    id: number;
+  }
   
   const terrainTiles: TerrainTiles = {
     Grass: { color: '#90EE90', symbol: '🌱' , width: 10, height: 2,image:roadImage},
@@ -87,43 +93,47 @@ const MapEditor = () => {
 
   // Handle tile drag over
   
-  const handleTileDragStart = (e:React.DragEvent<HTMLElement>, tile: string) => {
-    console.log("dragged");
-    console.log(JSON.stringify(tile));
-    e.dataTransfer.setData('tile', tile);
+  const handleTileDragStart = (e: React.DragEvent<HTMLDivElement>, tile: {type: string, id: number|null}) => {
+    e.dataTransfer.setData('text/plain', JSON.stringify(tile));
+    setDraggedTile(tile);
   };
-
-  // Handle tile drag over
-  const handleDragOver = (e:React.DragEvent<HTMLElement>) => {
+  
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const { x, y } = getGridPosition(e.clientX, e.clientY)?? { x: 0, y: 0 };
+    const { x, y } = getGridPosition(e.clientX, e.clientY) ?? { x: 0, y: 0 };
     
-    if (isWithinBounds(x, y)) {
-      const tile = e.dataTransfer.types.includes('tile') && 
-                  e.dataTransfer.getData('tile');
-      
-      if (tile && terrainTiles[tile]) {
-        setDropPreview({ type: tile, x, y });
-        e.dataTransfer.dropEffect = 'copy';
+    if (isWithinBounds(x, y) && draggedTile) {
+      if (draggedTile.id) {
+        console.log("remove tile");
+        setPlacedTiles((prevTiles) => prevTiles.filter((t) => t.id !== draggedTile.id));
       }
+      setDropPreview({ type: draggedTile.type, x, y });
+      e.dataTransfer.dropEffect = 'copy';
     } else {
       setDropPreview(null);
       e.dataTransfer.dropEffect = 'none';
     }
   };
+  
+  // Don't forget to clear the dragged tile state
+  const handleDragEnd = () => {
+    setDraggedTile(null);
+    setDropPreview(null);
+  };
 
   // Handle drag leave
   const handleDragLeave = () => {
+    setDraggedTile(null);
     setDropPreview(null);
   };
 
   // Handle tile drop
   const handleDrop = (e:React.DragEvent<HTMLElement>) => {
-    console.log("dropped");
     e.preventDefault();
-    const tile = e.dataTransfer.getData('tile');
+    const tileStr = e.dataTransfer.getData('text/plain');
+    const tile = JSON.parse(tileStr).type;
+    console.log(tileStr);
     const { x, y } = getGridPosition(e.clientX, e.clientY) ?? { x: 0, y: 0 };
-    console.log(x,y,isWithinBounds(x, y))
     if (isWithinBounds(x, y)) {
       setPlacedTiles([...placedTiles, {
         type: tile,
@@ -161,7 +171,7 @@ const MapEditor = () => {
             zIndex: tile.isPreview ? 1000 : 1
           }}
           draggable="true"
-          onDragStart={(e) => handleTileDragStart(e, tile.type)}
+          onDragStart={(e) => handleTileDragStart(e, {type:tile.type, id:tile.id})}
      
         >
             {terrainTiles[tile.type]?.image?.src ? (
@@ -268,7 +278,7 @@ const MapEditor = () => {
                       key={tile}
                       className="bg-gray-200 p-2 rounded cursor-move text-center flex items-center justify-center gap-2 hover:bg-gray-300"
                       draggable="true"
-                      onDragStart={(e) => handleTileDragStart(e, tile)}
+                      onDragStart={(e) => handleTileDragStart(e, {type:tile, id: null})}
                     >
                       {terrainTiles[tile]?.symbol}
                       <span>{tile}</span>
