@@ -1,18 +1,20 @@
 "use client"
-import React, { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Eraser, Move, Pencil, Square, ZoomIn, ZoomOut } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Eraser, Move, Pencil, Square} from 'lucide-react';
 import ZoomControls from './ZoomControls'
 import roadImage from './assets/road.webp';
 import fountain from './assets/fountain.png'
+import { StaticImageData } from 'next/image';
 const MapEditor = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const canvasRef = useRef(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [placedTiles, setPlacedTiles] = useState([]);
-  const [dropPreview, setDropPreview] = useState(null);
+  const [placedTiles, setPlacedTiles] = useState<Tile[]>([]);
+  const [dropPreview, setDropPreview] = useState<DropPreview | null>(null);
+  const [isMoveActive, setIsMoveActive] = useState(false);
   const gridSize = 8;
   
   const tileCategories = [
@@ -20,24 +22,48 @@ const MapEditor = () => {
     { id: 'buildings', name: 'Buildings', tiles: ['House', 'Tower', 'Wall'] },
     { id: 'furniture', name: 'Furniture', tiles: ['Table', 'Chair', 'Bed'] },
   ];
+  type TerrainTiles = {
+    [key: string]: TerrainTile;
+  };
+  type TerrainTile = {
+    color: string;
+    symbol: string;
+    width: number;
+    height: number;
+    image: StaticImageData
+  };
+  type Tile = {
+    id: number;
+    type: string;
+    x: number;
+    y: number;
+    isPreview: boolean;
+  };
 
-  const terrainTiles = {
-    Grass: { color: '#90EE90', symbol: '🌱' , width: 10, height: 2},
-    Water: { color: '#87CEEB', symbol: '💧',width: 5, height: 5 },
-    Mountain: { color: '#8B4513', symbol: '⛰️',width: 3, height: 10 },
+  type DropPreview = {
+    type: string;
+    x: number;
+    y: number;
+  };
+  
+  const terrainTiles: TerrainTiles = {
+    Grass: { color: '#90EE90', symbol: '🌱' , width: 10, height: 2,image:roadImage},
+    Water: { color: '#87CEEB', symbol: '💧',width: 5, height: 5,image:roadImage },
+    Mountain: { color: '#8B4513', symbol: '⛰️',width: 3, height: 10, image:roadImage },
     Road: { color: '#8B4543', symbol: '⛰️',width: 3, height: 10, image:roadImage },
     Fountain: { color: '#8B4543', symbol: '⛰️',width: 10, height: 10, image:fountain }
   };
 
   const tools = [
-    { id: 'move', icon: Move, name: 'Move' },
-    { id: 'draw', icon: Pencil, name: 'Draw' },
-    { id: 'wall', icon: Square, name: 'Wall' },
-    { id: 'eraser', icon: Eraser, name: 'Eraser' },
+    { id: 'move', icon: Move, name: 'Move', action: () => setIsMoveActive((prev) => !prev), toggled: isMoveActive },
+    { id: 'draw', icon: Pencil, name: 'Draw', action: () => {}, toggled: false},
+    { id: 'wall', icon: Square, name: 'Wall', action: () => {}, toggled: false},
+    { id: 'eraser', icon: Eraser, name: 'Eraser', action: () => {},toggled: false },
   ];
 
    // Get grid position from mouse coordinates
    const getGridPosition = (clientX: number, clientY: number) => {
+    if(canvasRef.current) {
     const rect = canvasRef.current.getBoundingClientRect();
     const x = (clientX - rect.left - pan.x) / zoom;
     const y = (clientY - rect.top - pan.y) / zoom;
@@ -46,26 +72,31 @@ const MapEditor = () => {
       x: Math.floor(x / gridSize) * gridSize,
       y: Math.floor(y / gridSize) * gridSize
     };
+  }
   };
    // Check if position is within canvas bounds
-   const isWithinBounds = (x, y) => {
+   const isWithinBounds = (x: number, y: number) => {
+    if(canvasRef.current) {
     const rect = canvasRef.current.getBoundingClientRect();
     return x >= 0 && y >= 0 && 
            x < rect.width / zoom && 
            y < rect.height / zoom;
+    }
   };
 
 
   // Handle tile drag over
   
-  const handleTileDragStart = (e, tile) => {
+  const handleTileDragStart = (e:React.DragEvent<HTMLElement>, tile: string) => {
+    console.log("dragged");
+    console.log(JSON.stringify(tile));
     e.dataTransfer.setData('tile', tile);
   };
 
   // Handle tile drag over
-  const handleDragOver = (e) => {
+  const handleDragOver = (e:React.DragEvent<HTMLElement>) => {
     e.preventDefault();
-    const { x, y } = getGridPosition(e.clientX, e.clientY);
+    const { x, y } = getGridPosition(e.clientX, e.clientY)?? { x: 0, y: 0 };
     
     if (isWithinBounds(x, y)) {
       const tile = e.dataTransfer.types.includes('tile') && 
@@ -87,17 +118,19 @@ const MapEditor = () => {
   };
 
   // Handle tile drop
-  const handleDrop = (e) => {
+  const handleDrop = (e:React.DragEvent<HTMLElement>) => {
+    console.log("dropped");
     e.preventDefault();
     const tile = e.dataTransfer.getData('tile');
-    const { x, y } = getGridPosition(e.clientX, e.clientY);
-    
+    const { x, y } = getGridPosition(e.clientX, e.clientY) ?? { x: 0, y: 0 };
+    console.log(x,y,isWithinBounds(x, y))
     if (isWithinBounds(x, y)) {
       setPlacedTiles([...placedTiles, {
         type: tile,
         x,
         y,
-        id: Date.now()
+        id: Date.now(),
+        isPreview: false
       }]);
     }
     
@@ -108,7 +141,7 @@ const MapEditor = () => {
   const renderTiles = () => {
     const tiles = [...placedTiles];
     if (dropPreview) {
-      tiles.push({ ...dropPreview, id: 'preview', isPreview: true });
+      tiles.push({ ...dropPreview, id: -1, isPreview: true });
     }
     return tiles.map(tile => (
         <div
@@ -127,8 +160,11 @@ const MapEditor = () => {
             pointerEvents: tile.isPreview ? 'none' : 'auto',
             zIndex: tile.isPreview ? 1000 : 1
           }}
+          draggable="true"
+          onDragStart={(e) => handleTileDragStart(e, tile.type)}
+     
         >
-            {terrainTiles[tile.type]?.image.src ? (
+            {terrainTiles[tile.type]?.image?.src ? (
           <img
             src={terrainTiles[tile.type]?.image.src}
             alt={tile.type}
@@ -139,8 +175,6 @@ const MapEditor = () => {
           <div
           >
           {terrainTiles[tile.type]?.symbol}
-          {terrainTiles[tile.type]?.symbol}
-            {terrainTiles[tile.type]?.symbol}
           </div>
         )}
         
@@ -149,13 +183,14 @@ const MapEditor = () => {
   };
 
   // Handle zoom with mouse wheel
-  const handleWheel = (e:any) => {
+  const handleWheel = (e:React.WheelEvent) => {
     e.preventDefault();
     const zoomFactor = 0.1; 
     const delta = e.deltaY > 0 ? -zoomFactor : zoomFactor;
     const newZoom = Math.max(0.5, Math.min(3, zoom + delta));
     
     // Calculate cursor position relative to canvas
+    if(canvasRef.current){
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -170,18 +205,21 @@ const MapEditor = () => {
       setPan(newPan);
       setZoom(newZoom);
     }
+  }
   };
 
   // Handle pan with mouse drag
-  const handleMouseDown = (e:any) => {
+  const handleMouseDown = (e:React.MouseEvent<HTMLElement>) => {
+    if(isMoveActive) {
     setIsDragging(true);
     setDragStart({
       x: e.clientX - pan.x,
       y: e.clientY - pan.y
     });
+  }
   };
 
-  const handleMouseMove = (e:any) => {
+  const handleMouseMove = (e:React.MouseEvent<HTMLElement>) => {
     if (isDragging) {
       setPan({
         x: e.clientX - dragStart.x,
@@ -260,8 +298,13 @@ const MapEditor = () => {
             {tools.map((tool) => (
               <button
                 key={tool.id}
-                className="p-2 hover:bg-gray-100 rounded-lg tooltip"
+                className={`p-2 rounded-lg tooltip ${
+                  tool.toggled
+                    ? 'bg-blue-500 text-white' // Active state
+                    : 'hover:bg-gray-100' // Default state
+                }`}
                 title={tool.name}
+                onClick={tool.action}
               >
                 <tool.icon size={24} />
               </button>
