@@ -46,11 +46,6 @@ const MapEditor = () => {
     x: number;
     y: number;
   };
-
-  type TileStr = {
-    type: string;
-    id: number;
-  }
   
   const terrainTiles: TerrainTiles = {
     Grass: { color: '#90EE90', symbol: '🌱' , width: 10, height: 2,image:roadImage},
@@ -345,6 +340,7 @@ const MapEditor = () => {
             onMouseLeave={handleMouseUp}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
+            onDragEnd={handleDragEnd}
             onDrop={handleDrop}
             style={{
               backgroundImage: `
