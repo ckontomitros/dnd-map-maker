@@ -99,7 +99,6 @@ const MapEditor = () => {
     
     if (isWithinBounds(x, y) && draggedTile) {
       if (draggedTile.id) {
-        console.log("remove tile");
         setPlacedTiles((prevTiles) => prevTiles.filter((t) => t.id !== draggedTile.id));
       }
       setDropPreview({ type: draggedTile.type, x, y });
@@ -112,13 +111,11 @@ const MapEditor = () => {
   
   // Don't forget to clear the dragged tile state
   const handleDragEnd = () => {
-    setDraggedTile(null);
     setDropPreview(null);
   };
 
   // Handle drag leave
   const handleDragLeave = () => {
-    setDraggedTile(null);
     setDropPreview(null);
   };
 
